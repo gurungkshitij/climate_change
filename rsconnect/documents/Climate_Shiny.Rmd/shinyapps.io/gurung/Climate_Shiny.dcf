@@ -1,0 +1,12 @@
+name: Climate_Shiny
+title: Climate_Shiny
+username:
+account: gurung
+server: shinyapps.io
+hostUrl: https://api.shinyapps.io/v1
+appId: 1585722
+bundleId: 2657990
+url: https://gurung.shinyapps.io/Climate_Shiny/
+when: 1576041229.23677
+asMultiple: FALSE
+asStatic: FALSE

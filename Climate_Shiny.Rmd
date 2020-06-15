@@ -1,0 +1,283 @@
+---
+title: "Global Climate Change"
+author: "Bashir-Kshitij"
+date: "12/10/2019"
+output: html_document
+runtime: shiny
+resource_files:
+- climate_data.csv
+- glaciers_csv.csv
+- Forest.csv
+- fossil-fuel-co2-emissions-by-nation_csv.csv
+- data_csv.csv
+---
+
+```{r setup, include=FALSE, message=FALSE}
+library(tidyverse)
+library(base)
+library(gridExtra)
+library(forcats)
+library(rsconnect)
+library(plotly)
+
+# reading datasets
+climate_data <- read.csv("~/Mscs 264 F19/Project/Bashir_Kshitij Project/climate_data.csv")
+Forest <- read.csv("~/Mscs 264 F19/Project/Bashir_Kshitij Project/Forest.csv")
+Glacier <- read_csv("~/Mscs 264 F19/Project/Bashir_Kshitij Project/glaciers_csv.csv")
+co2_fossile_nation<-read_csv("~/Mscs 264 F19/Project/Bashir_Kshitij Project/fossil-fuel-co2-emissions-by-nation_csv.csv")
+methane<-read_csv("~/Mscs 264 F19/Project/Bashir_Kshitij Project/data_csv.csv")
+
+# converting datasets into tibble
+climate_data<- as.tibble(climate_data)
+Forest <- as.tibble(Forest)%>%
+  rename(Year = Country.Name)
+Glacier<-as.tibble(Glacier)
+co2_fossile_nation<-as.tibble(co2_fossile_nation)
+
+# subseting methan into region and country. We chose the row number based on observing the dataset
+methane.region<- methane[1:1978,] # regions were on the first half of dataset
+methane.nation<-methane[1979:nrow(methane),] # countries data started from 1979 onwards.
+
+# renaming variables
+Glacier<-Glacier%>%
+  rename(Mean_cumulative_mass_balance=`Mean cumulative mass balance`)
+Glacier$Year = as.numeric(Glacier$Year)
+climate_data$Year=as.Date(climate_data$Year)
+```
+  
+Now more than ever before, there is an urgent need to make climate change data accessible to everyone in the general public. This is an important first step in having an informed discussion about ways in which we can contribute to a more sustainable planet in the future. It is not a secret that our climate is changing faster than ever before and the consequences of this change on life are tremendous. Global climate change will have a profound effect on the ocean by altering temperature, CO2-acidification, and dissolved oxygen (DO) in the ocean. The consequences of climate change on land are even more severe than that of the ocean. Longer, more intense droughts threaten crops, wildlife, and freshwater supplies. From polar bears in the Arctic to marine turtles off the coast of Africa, our planet’s diversity of life is at risk from an ever-changing climate (worldwildlife.org). For these reasons, it critical to study how important climate change variables (example Carbon-dioxide and Methane gas emissions) are changing over time and what other factors may be correlated with such variables. It is important to note that though not every country is contributing to climate change, the consequence of the warming planet is global. There are a great number of data out there showing an association between increased temperatures, rising sea levels, melting polar caps, and other variables indicative of a changing world. We are interested in exploring the global rise in greenhouse gases such as carbon dioxide gas and methane gas (CO2 and CH4: proxies for climate change) and their strong associations with change in land-temperatures, the size of glaciers, sea level, and change in forest percentage over time. 
+
+
+# Cources of CO2 Emissions
+
+  - We show here CO2 emissions from different sources (gas fuels, liquid fuels, solid fuels, gas flaring) from the year 1880 to 2014. Notice how CO2  emissions shoot up after 1950 around the same time the industrial revolution took off. An increase in CO2 emission is associated with an increase in global land temperature and sea level rises. 
+
+```{r, echo=FALSE}
+titlePanel("Predictors of Climae Change")
+
+inputPanel(
+  selectInput("y", label = "Y-axis variable:",
+    choices = c("CO2 emission from Solid fuel" = "CO2_solid.fuel",
+                "CO2 emission from Liquid fuel" = "CO2_liquid.fuel",
+                "CO2 emission from Gas fuel" = "CO2_Gas.Fuel",
+                "Total CO2 emission" = "Total_CO2"
+                )),
+  sliderInput("size", label = "Point size",
+              min = 1, max = 3, value = 0.75, step = 0.1),
+  sliderInput("alpha", label = "Point transparency",
+              min = 0.2, max = 1, value = 0.25, step = 0.1)
+)
+renderPlot({
+       ggplot(climate_data, aes_string(x = "Year", y = input$y))+  
+          geom_point(size=input$size, alpha=input$alpha)
+
+       })
+```
+
+
+```{r, echo=FALSE}
+titlePanel("Top 5 Countries with Higest Total CO2 Emmission")
+renderPlot({
+# Top 5 couuntries with highest total CO2 emmision across years
+co2_fossile_nation%>%
+  group_by(Country)%>%
+  summarise(total_co2=mean(Total, na.rm=TRUE))%>%
+  arrange(desc(total_co2))%>%
+  top_n(5)
+
+# we hand picked the top 5 countries to filter the dataset
+tot_co2<- co2_fossile_nation%>%
+  filter(Country=='UNITED STATES OF AMERICA' |Country=='RUSSIAN FEDERATION'
+         |Country=="CHINA (MAINLAND)"|Country=="JAPAN"|Country=="USSR")
+ggplot(tot_co2, aes(x = Year, y = Total, color = Country))+
+  geom_point()+
+  labs( y="Total CO2 emmision")
+
+})
+```
+
+  - It is important to note that CO2 emissions overtime are not equally distributed across countries. Few countries are responsible for the incredible increase of CO2 gas in the atmosphere in the last couple of decades. They tend to be some of the most developed nations.
+
+
+```{r, echo=FALSE}
+titlePanel("Top 20 Countries with Higest CO2 Emmission in 2014")
+renderPlot({
+co2_fossile_nation%>%
+  filter(Year==2014)%>%
+  arrange(desc(Total))%>%
+  top_n(20)%>%
+ggplot(aes(x = fct_reorder(Country, Total), y = Total)) +
+    geom_col(fill='slateblue2') + 
+    coord_flip() +
+    labs( x="Countries", y= "Total CO2 emmission")
+})
+```
+
+- Countries like India and China, that have highly accelerated their growth in recent decades, tend to be among the top list for CO2 emission in 2014. 
+
+```{r, echo=FALSE}
+titlePanel("Top 20 Countries with Higest CO2 Emmission Per Capita in 2014")
+renderPlot({
+co2_percap<-co2_fossile_nation%>%
+  filter(Year==2014)%>%
+  rename(co2_percap='Per Capita')%>%
+  arrange(desc(co2_percap))
+
+ggplot(co2_percap[1:20,],aes(x = fct_reorder(Country,co2_percap ), y = co2_percap)) +
+  geom_col(fill='orangered2') +
+  coord_flip() +
+  labs( x="Countries", y = "CO2 emmisison Per capita")
+
+})
+```
+
+- Gulf countries like Qatar, Kuwait, Saudi Arabia, which are comparatively smaller but very rich and develop seem to have the most contribution in CO2 emission per person. 
+
+# Methane Gas Emssions (CH4)
+
+- Methane is another important greenhouse gas that is often ignored in longer-term climate models. Methane, like CO2,absorbs the sun's heat in the atmosphere. Even though methane is short-lived in the atmosphere, it is initially far more devastating to the climate because of how effectively it absorbs heat.
+  
+```{r, echo=FALSE}
+titlePanel("Global Methane Gas Emission Over Time")
+renderPlot({
+# Methane
+methane%>%
+  filter(`Country Name`== 'World')%>%
+  ggplot(aes(x=Year, y=Value))+
+    geom_point(size=2)+
+    labs( y="Methane emission")
+})
+```
+
+- Total global methane gas emissions are generally increasing showing the same trend as the global CO2 emissions. 
+
+```{r, echo=FALSE}
+titlePanel("Top 20 Countries with Higest Methane Gas Emmission in 2012")
+renderPlot({
+# Methane emission by countries in 2014
+methane.nation%>%
+  filter(Year==2012)%>%
+  arrange(desc(Value))%>%
+  top_n(20)%>%
+ggplot(aes(x = fct_reorder(`Country Name`, Value), y = Value)) +
+    geom_col(fill='slateblue2') + 
+    coord_flip() +
+    labs( x="Countries", y= "Total Methane emmission")
+})
+```
+
+- China has both the highest CO2 emissions and methane gas emissions. More developing countries such as Pakistan make it to the top 10 countries with the highest methane emissions.  
+
+```{r, echo=FALSE}
+titlePanel("Top 5 Countries with Higest Methane Gas Emmission in 2012")
+renderPlot({
+methane.nation%>%
+  filter(`Country Name`=='China'|`Country Name`=='India'|`Country Name`=='Russian Federation'|`Country Name`=='United States'|`Country Name`=='Brazil')%>% # handpciked the countires from above plot
+ggplot(aes(x = Year, y = Value, color = fct_reorder2(`Country Name`, Year, Value)))+
+  geom_line(linetype =1, size=2)+
+  labs( x="Countries", y= "Total Methane emmission",
+       colour = "Country Name")
+})
+```
+
+
+```{r, echo=FALSE}
+titlePanel("Methane Gas Emmission among Different Regions Around World")
+renderPlot({
+# Methane emission across different region of the world throught the years
+MR<-methane.region%>%
+  filter(`Country Name`=='Arab World'|`Country Name`=='Caribbean small state'
+         |`Country Name`=='East Asia & Pacific'|`Country Name`=='Latin America & Caribbean'|`Country Name`=="North America"|`Country Name`=="Europe & Central Asia"
+         |`Country Name`=="Heavily indebted poor countries (HIPC)"
+         |`Country Name`=="") 
+ggplot(MR,aes(x = Year, y = Value, color =fct_reorder2(`Country Name`, Year,Value)))+
+  geom_line(linetype =1, size=2)+
+   labs( y= "Total Methane emmission", x='Region', colour='Regions')
+})
+```
+
+
+# Glacier Mass and Forest Area
+
+- We present average cumulative mass balance of “reference” Glaciers worldwide from 1945-2014. The cumulative change in the mass balance of a set of “reference” glaciers worldwide beginning in 1945 is comapared to all the other glacier masses over time. 
+    
+    
+```{r, echo =FALSE}
+titlePanel("Average Cumulative Mass Balance of Glaciers")
+renderPlot({
+  ggplot(data = Glacier, aes(x= Year, y =Mean_cumulative_mass_balance))+
+    geom_point()
+  })
+```
+
+- The average cumulative mass balance of Glaciers tend to decrease over time. This is associated with the increase in greenhouse gases like CO2 and CH4 increases, which increases the global temperature and warms up the earth.
+
+```{r, echo=FALSE}
+titlePanel("Change in Sea Level and Land Temperature over Years")
+
+inputPanel(
+  selectInput("y1", label = "Y-axis variable:",
+    choices = c(
+                "Change in Sea level" = "CSIRO.Adjusted.Sea.Level",
+                "Change in Land temperature" = "land.temp")),
+  sliderInput("size1", label = "Point size",
+              min = 1, max = 3, value = 0.75, step = 0.1),
+  sliderInput("alpha1", label = "Point transparency",
+              min = 0.2, max = 1, value = 0.25, step = 0.1)
+)
+renderPlot({
+        ggplot(climate_data, aes_string(x = "Year", y = input$y1))+  
+          geom_point(size=input$size1, alpha=input$alpha1)
+})
+```
+
+- The Sea Level is clearly increasing over time, which again correlates with the increase in greenhouse gases. As the global temperature increases, more glaciers melt hence increasing the sea level. 
+- The land temperature is increasing over the years, which indicates that the earth is warming up, which could be from the rising greenhouse gases.
+
+## Change in Forest Area percentage across years
+- Percent Forest area is land under natural or planted stands of trees of at least 5 meters in situ over time.
+```{r, echo=FALSE}
+inputPanel(
+  checkboxInput("type_check", "Include Top 5 Countries?", value = FALSE)
+)
+renderPlot({
+     if (input$type_check) 
+       Forest%>%
+    filter(Country.Code=='HND'|Country.Code=='PRK'|Country.Code=='ZWE'|
+           Country.Code=='KHM'|Country.Code=='TLS')%>%
+ggplot(aes(x= Year,y =Forest.Area, color = Country.Code))+
+    geom_point(aes(color = Country.Code), size=2)+
+    geom_smooth(method='lm')
+     else if (!input$type_check)  
+       Forest%>%
+  group_by(Year)%>%
+  summarise(For.Area = mean(Forest.Area, na.rm=TRUE))%>%
+  ggplot(aes(y = For.Area, x = Year))+
+    geom_point(size = 3)+geom_smooth(method ="lm")
+})
+
+```
+- Top 5 countries greatest decline in forest area are Honduras, Cambodia, North Korea, Timor-Leste, and Zimbabwe. The decline in forest area also seems to correlate with the increasing greehouse gases. 
+
+# Conclusion 
+
+ Both CO2 and methane gas emission has been on an upward trajectory since early 1950. An important finding from this analysis is the fact that only a few countries (e.g. China, US) have the greatest impact on greenhouse gas emissions. Furthermore, land temperatures show the same trend as greenhouse gas emissions over time, that is the change in land temp drastically increases after 1950 compared to before the 1950s. In addition to temperature, sea levels have also been rising in the same patterns as the land temperture and greenhouse gas emissions. Finally, we have analysed Glacier mass and forest area over time to use it as a proxy for climate change impact. As we would expect, Glacier size has been declining over the years which indicates that the rise in temp may be the cause of the melting glaciers overtime (notice that we are not saying the rise in temp is the cause as we have not done any statistical models to make such conclusions). Similar to the glacier mass, forest area has been on a decline over our observational years, again may be explained by the increase in temp leading to more frequent droughts. We hope this will be a story that will prom anyone who gets the chance to look at this, to think more critically about the future of this planet and how humans may be able to determine that based on our current activities. 
+
+**Sources**
+
+We obtained most of our data from Datahub, a website that has a lot of climate change data. These data include CO2 emissions by country, Sea level rises, land temperatures, and Glacier mass. We also got some data from the World Bank website.
+
+- https://datahub.io/core/co2-fossil-by-nation 
+
+- https://datahub.io/examples/transform-examples-on-co2-fossil-global#readme
+
+- https://datahub.io/core/sea-level-rise
+
+- https://datahub.io/core/glacier-mass-balance
+
+- https://data.worldbank.org/indicator/AG.LND.FRST.ZS
+
+
+
+
+ 

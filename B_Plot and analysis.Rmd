@@ -1,0 +1,84 @@
+---
+title: "Plot analysis"
+author: "Kshitij-Bashir"
+date: "11/26/2019"
+output: html_document
+editor_options: 
+  chunk_output_type: console
+---
+```{r setup, include=FALSE}
+library(tidyverse)
+library(base)
+library(gridExtra)
+library(gridExtra)
+```
+
+```{r}
+# comparing total co2 producation between countries across time
+climate_data <- read.csv("~/Mscs 264 F19/Project/Bashir_Kshitij Project/climate_data.csv")
+Forest <- read.csv("~/Mscs 264 F19/Project/Bashir_Kshitij Project/Forest.csv")
+Glacier <- read_csv("~/Mscs 264 F19/Project/Bashir_Kshitij Project/glaciers_csv.csv")
+```
+
+```{r}
+# converting datasets into tibble
+climate_data<- as.tibble(climate_data)
+Forest <- as.tibble(Forest)
+Glacier<-as.tibble(Glacier)
+# renaming 
+Glacier<-Glacier%>%
+rename(Mean_cumulative_mass_balance=`Mean cumulative mass balance`)
+Glacier$Year = as.factor(Glacier$Year)
+climate_data$Year=as.Date(climate_data$Year)
+
+# plots
+solid<-ggplot(data = climate_data, aes(x= (Year), y = CO2_solid.fuel))+
+  geom_point()
+land<-ggplot(data = climate_data, aes(x= (Year), y = land.temp))+
+  geom_point()
+Glacier<-ggplot(data =Glacier, aes(x= Year, y = Mean_cumulative_mass_balance))+
+  geom_point()
+sealevel<-ggplot(data = climate_data, aes(x= Year, y = CSIRO.Adjusted.Sea.Level))+
+  geom_point()
+plots.climate <- grid.arrange(solid, land, Glacier, sealevel,
+                                   ncol=2)
+Forest%>%
+  filter(Country.Code=='SUR')%>%
+ggplot( aes(x= Country.Name, y = Forest.Area))+
+  geom_point()
+
+try<- Forest%>%
+  filter(Country.Name == "1990" | Country.Name == "2016")%>%
+  spread(key = Country.Name, value = Forest.Area)
+
+Forest%>%
+  group_by(Country.Name)%>%
+  summarise(For.Area = mean(Forest.Area, na.rm=TRUE))%>%
+  ggplot(aes(y = For.Area, x = Country.Name))+
+  geom_point()
+
+ggplot(data =Glacier , aes(x= Year, y =Mean))+
+  geom_point()
+
+
+```
+
+```{r}
+Co2_by_nation_csv <- read_csv("~/Mscs 264 F19/Project/Bashir_Kshitij Project/fossil-fuel-co2-emissions-by-nation_csv.csv")
+
+Co2_by_nation_csv <- as.tibble(Co2_by_nation_csv)
+
+CO2_country <- Co2_by_nation_csv %>%
+  group_by(Country) %>%
+  summarise(total_co2 = sum(Total)) %>%
+  arrange(desc(total_co2)) %>%
+  top_n(n = 5)
+
+Co2_by_nation_csv %>%
+  filter(Country == "UNITED STATES OF AMERICA" | Country == "CHINA (MAINLAND)" | Country == "USSR" | Country == "UNITED KINGDOM"| Country == "JAPAN") %>%
+ggplot(aes(x= Year, y = Total, color = Country)) +
+  geom_point()
+```
+
+ 
+ 

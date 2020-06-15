@@ -1,0 +1,74 @@
+---
+title: "Climate change: Data cleaning"
+author: "Bashir-Kshitij"
+date: "11/14/2019"
+output: html_document
+editor_options: 
+  chunk_output_type: inline
+---
+
+```{r setup, include=FALSE}
+library(tidyverse)
+library(base)
+library(zoo)
+```
+ 
+```{r}
+# Loading datasets
+global.sealevel <- read_csv("~/Mscs 264 F19/Project/Bashir_Kshitij Project/epa-sea-level_csv.csv")
+global.temp <- read_csv("~/Mscs 264 F19/Project/Bashir_Kshitij Project/global-temp-annual_csv.csv")
+global.co2 <- read_csv("~/Mscs 264 F19/Project/Bashir_Kshitij Project/global.1751_2014.csv")
+Forest_Area <- read_csv("~/Mscs 264 F19/Project/Bashir_Kshitij Project/Forest Area.New2.csv")
+```
+
+```{r}
+# coverting dataset into tibble
+global.sealevel<-as_tibble(global.sealevel)
+head(global.sealevel)
+global.temp<-as_tibble(global.temp)
+head(global.temp)
+global.co2<-as_tibble(global.co2)
+head(global.co2)
+```
+I took a subset of datasets with common date (1980-2010), merged, and wrote a main dataset: climate_data.
+```{r}
+# converting Year into data format 
+global.sealevel$Year = as.Date(global.sealevel$Year)
+global.co2$Year = as.numeric(global.co2$Year)
+
+# subseting data from year 1880-2010 so that the dates are common between datasets
+sealevel <-global.sealevel[1:131,]
+temperature <- global.temp[1:131,]
+co2 <- global.co2%>%
+  filter(Year >=1880)
+
+# Merging data sets
+final<-sealevel%>%
+  inner_join(temperature, key="Year")
+co2 <- co2%>%
+  mutate(why=as.double(Year))
+final<-final%>%
+  mutate(why= as.double(str_sub(Year, 1,4))) # Turning full date into just year (key) so that we could merge them wiht Co2, which has only year.
+final1 <- merge(co2,final, by = "why")
+
+# selecting, renaming, changing variable types
+final1<-final1%>%rename(Year = Year.y, Total_CO2="Total carbon emissions from fossil fuel consumption and cement production (million metric tons of C)", CO2_Gas.Fuel="Carbon emissions from gas fuel consumption",CO2_liquid.fuel= "Carbon emissions from liquid fuel consumption",  CO2_solid.fuel="Carbon emissions from solid fuel consumption" , CO2_cement="Carbon emissions from cement production",land.temp="Land")%>%
+  select(Year, Total_CO2, CO2_Gas.Fuel, CO2_liquid.fuel,CO2_solid.fuel, CO2_cement,land.temp,  'CSIRO Adjusted Sea Level',  'Lower Error Bound', 'Upper Error Bound',land.temp,'Land and Ocean','N Hem','S Hem')%>%
+  mutate(Year = as.Date(Year))
+
+# writing final dataset
+climate_data <- write.csv(final1, "~/Mscs 264 F19/Project/Bashir_Kshitij Project/climate_data.csv", row.names = FALSE)
+```
+
+I gathered forest data and wrote a final forest dataset. 
+```{r}
+# gathering and selecting important variables
+Forest<- as_tibble(Forest_Area) %>%
+  gather(key = "Country Name", value = "Forest Area", `1990`, `1991`, `1992`, `1993`, `1994`, `1995`, `1996`, `1997`, `1998`, `1999`, `2000`, `2001`, `2002`, `2003`,`2004`,`2005`,`2006`,`2007`,`2008`, `2009`,`2010`,`2011`,`2012`,`2013`,`2014`,`2015`, `2016`,`2017`,`2018`,`2019`) %>%
+dplyr::select('Country Name', 'Country Code', 'Indicator Code', 'Indicator Name', 'Forest Area')  
+
+#writing cleaned Forest dataset
+write.csv(Forest, "~/Mscs 264 F19/Project/Bashir_Kshitij Project/Forest.csv", row.names = FALSE)
+```
+
+ 
